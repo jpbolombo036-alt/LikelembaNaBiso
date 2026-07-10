@@ -42,6 +42,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/api/paiements/callback").permitAll()
                 .requestMatchers("/api/dashboard/public").permitAll()
+                .requestMatchers("/actuator/health").permitAll()
                 // Toutes les autres requêtes doivent être authentifiées
                 .anyRequest().authenticated()
             )
