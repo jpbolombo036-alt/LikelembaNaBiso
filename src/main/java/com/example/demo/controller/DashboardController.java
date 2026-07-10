@@ -1,5 +1,6 @@
 package com.example.demo.controller;
 
+import com.example.demo.Dto.response.CashDashboardResponse;
 import com.example.demo.Dto.response.DashboardRoleStats;
 import com.example.demo.Dto.response.DashboardResponse;
 import com.example.demo.Service.DashboardService;
@@ -20,6 +21,7 @@ import java.util.UUID;
 public class DashboardController {
 
     private final DashboardService dashboardService;
+    private final JwtService jwtService;
 
     @GetMapping
     public ResponseEntity<DashboardRoleStats> obtenirDashboard(
@@ -29,10 +31,19 @@ public class DashboardController {
         return ResponseEntity.ok(dashboardService.obtenirDashboard(utilisateurId, role));
     }
 
+    @GetMapping("/cash/agent")
+    public ResponseEntity<CashDashboardResponse> obtenirDashboardCashAgent(
+            @RequestHeader(name = "Authorization") String authorizationHeader) {
+        UUID agentId = jwtService.extraireIdUtilisateur(extractToken(authorizationHeader));
+        return ResponseEntity.ok(dashboardService.obtenirDashboardCashAgent(agentId));
+    }
+
     @GetMapping("/public")
     public ResponseEntity<com.example.demo.Dto.response.DashboardResponse> obtenirDashboardPublic() {
-        com.example.demo.Dto.response.DashboardResponse response = new com.example.demo.Dto.response.DashboardResponse();
-        response.setRole("PUBLIC");
+        com.example.demo.Dto.response.DashboardResponse response =
+                com.example.demo.Dto.response.DashboardResponse.builder()
+                        .role("PUBLIC")
+                        .build();
         return ResponseEntity.ok(response);
     }
 

@@ -5,6 +5,8 @@ import com.example.demo.Entity.Tour;
 import com.example.demo.Entity.Utilisateur;
 
 import java.math.BigDecimal;
+import java.util.List;
+import java.util.UUID;
 
 public interface NotificationService {
 
@@ -53,4 +55,16 @@ public interface NotificationService {
      * SMS envoyé au membre après confirmation ou rejet de son paiement cash par l'agent.
      */
     void notifierConfirmationCash(Utilisateur membre, boolean accepte, BigDecimal montant, String devise, Tontine tontine, String commentaire);
+
+    /**
+     * Liste les notifications non lues (statut != LU) d'un agent, du plus récent au plus ancien.
+     * Le filtre type est optionnel (ex : DECLARATION_CASH, CONFIRMATION_CASH, REJET_CASH).
+     */
+    List<com.example.demo.Entity.Notification> listerPourAgent(Utilisateur agent, String typeFiltre);
+
+    /**
+     * Marque une notification comme lue (statut = LU) si elle appartient bien à l'agent.
+     * Lève IllegalAccessError si la notification appartient à un autre utilisateur.
+     */
+    void marquerCommeLue(UUID idNotification, UUID agentId);
 }

@@ -51,7 +51,7 @@ public interface UtilisateurService {
      */
     UtilisateurResponse obtenirParTelephone(String telephone);
 
-    ChangerMotDePasseRequest changerMotDePasse(UUID idUtilisateur, ChangerMotDePasseRequest request);
+    UtilisateurResponse changerMotDePasse(UUID idUtilisateur, ChangerMotDePasseRequest request);
 
     void reinitialiserMotDePasse(ReinitialiserMotDePasseRequest request);
 

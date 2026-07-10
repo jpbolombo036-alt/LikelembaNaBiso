@@ -268,10 +268,10 @@ public class PaiementServiceImpl implements PaiementService {
     @Override
     @Transactional(readOnly = true)
     public List<TransactionResponse> getDeclarationsCashEnAttente(UUID tontineId) {
-        List<Transaction> transactions = transactionRepository.findByStatut("INITIEE");
+        List<Transaction> transactions = transactionRepository
+                .findByStatutAndModePaiementAndCotisation_Tour_Tontine_IdTontineOrderByDateInitiationAsc(
+                        "INITIEE", ModePaiement.CASH, tontineId);
         return transactions.stream()
-                .filter(t -> ModePaiement.CASH.equals(t.getModePaiement()))
-                .filter(t -> t.getCotisation().getTour().getTontine().getIdTontine().equals(tontineId))
                 .map(this::toResponse)
                 .toList();
     }

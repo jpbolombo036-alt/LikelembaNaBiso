@@ -36,4 +36,14 @@ public interface NotificationRepository extends JpaRepository<Notification, UUID
 
     /** Compte les notifications non lues d'un utilisateur (badge UI). */
     long countByDestinataireAndStatut(Utilisateur destinataire, String statut);
+
+    /** Retourne les notifications d'un destinataire dont le statut est différent de celui donné (hors LU). */
+    List<Notification> findByDestinataireAndStatutNotOrderByDateCreationDesc(Utilisateur destinataire, String statut);
+
+    /** Retourne les notifications d'un destinataire hors LU, filtrées par type. */
+    List<Notification> findByDestinataireAndTypeAndStatutNotOrderByDateCreationDesc(
+            Utilisateur destinataire, String type, String statut);
+
+    /** Compte les notifications non lues d'un utilisateur (tout statut sauf LU, badge UI). */
+    long countByDestinataireAndStatutNot(Utilisateur destinataire, String statut);
 }

@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * Implémentation du service de notification SMS.
@@ -194,5 +195,30 @@ public class NotificationServiceImpl implements NotificationService {
             motif
         );
         envoyerSms(membre, tontine, accepte ? "CONFIRMATION_CASH" : "REJET_CASH", message);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Notification> listerPourAgent(Utilisateur agent, String typeFiltre) {
+        if (typeFiltre != null && !typeFiltre.isEmpty()) {
+            return notificationRepository
+                    .findByDestinataireAndTypeAndStatutNotOrderByDateCreationDesc(agent, typeFiltre, "LU");
+        }
+        return notificationRepository.findByDestinataireAndStatutNotOrderByDateCreationDesc(agent, "LU");
+    }
+
+    @Override
+    @Transactional
+    public void marquerCommeLue(UUID idNotification, UUID agentId) {
+        Notification notification = notificationRepository.findById(idNotification)
+                .orElseThrow(() -> new IllegalArgumentException("Notification introuvable : " + idNotification));
+
+        if (!notification.getDestinataire().getIdUtilisateur().equals(agentId)) {
+            throw new IllegalAccessError(
+                    "La notification " + idNotification + " n'appartient pas à l'agent " + agentId);
+        }
+
+        notification.setStatut("LU");
+        notificationRepository.save(notification);
     }
 }

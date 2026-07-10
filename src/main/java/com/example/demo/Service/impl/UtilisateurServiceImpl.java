@@ -165,7 +165,7 @@ public class UtilisateurServiceImpl implements UtilisateurService {
 
     @Override
     @Transactional
-    public ChangerMotDePasseRequest changerMotDePasse(UUID idUtilisateur, ChangerMotDePasseRequest request) {
+    public UtilisateurResponse changerMotDePasse(UUID idUtilisateur, ChangerMotDePasseRequest request) {
         Utilisateur utilisateur = utilisateurRepository.findById(idUtilisateur)
                 .orElseThrow(() -> new IllegalArgumentException("Utilisateur introuvable : " + idUtilisateur));
 
@@ -177,7 +177,7 @@ public class UtilisateurServiceImpl implements UtilisateurService {
         utilisateur.setDoitChangerMotDePasse(false);
         utilisateurRepository.save(utilisateur);
         log.info("Mot de passe changé pour : {}", idUtilisateur);
-        return request;
+        return toResponse(utilisateur);
     }
 
     @Override

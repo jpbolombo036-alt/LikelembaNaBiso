@@ -41,6 +41,7 @@ public class SecurityConfig {
                 // Endpoints publics : Authentification et Webhook de paiement Mobile Money
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/api/paiements/callback").permitAll()
+                .requestMatchers("/api/dashboard/public").permitAll()
                 // Toutes les autres requêtes doivent être authentifiées
                 .anyRequest().authenticated()
             )

@@ -2,6 +2,7 @@ package com.example.demo.Service.impl;
 
 import com.example.demo.Dto.response.*;
 import com.example.demo.Entity.*;
+import com.example.demo.Enum.ModePaiement;
 import com.example.demo.Repository.*;
 import com.example.demo.Service.DashboardService;
 import lombok.RequiredArgsConstructor;
@@ -10,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -57,7 +59,7 @@ public class DashboardServiceImpl implements DashboardService {
                 .nombreTontinesTerminees(nombreTontinesTerminees)
                 .montantTotalCotisations(montantTotalCotisations)
                 .montantTotalRetards(montantTotalRetards)
-                .nombreNotificationsNonLues(notificationRepository.countByDestinataireAndStatut(utilisateur, "EN_ATTENTE"))
+                .nombreNotificationsNonLues(notificationRepository.countByDestinataireAndStatutNot(utilisateur, "LU"))
                 .build();
 
         long nombreTontines = nombreTontinesActives + nombreTontinesTerminees;
@@ -156,6 +158,123 @@ public class DashboardServiceImpl implements DashboardService {
                 .statsCredits(statsCredits)
                 .alertes(alertes)
                 .prochainesEcheances(prochainesEcheances)
+                .build();
+    }
+
+    /** Seuil (heures) au-delà duquel une déclaration cash en attente est considérée comme ancienne. */
+    private static final long HEURES_DECLARATION_ANCIENNE = 48;
+
+    @Override
+    @Transactional(readOnly = true)
+    public CashDashboardResponse obtenirDashboardCashAgent(UUID agentId) {
+        Utilisateur agent = utilisateurRepository.findById(agentId)
+                .orElseThrow(() -> new IllegalArgumentException("Utilisateur introuvable : " + agentId));
+
+        List<Tontine> tontinesGerees = tontineRepository.findByAgentGestionnaire(agent);
+        if (tontinesGerees.isEmpty()) {
+            throw new IllegalStateException("L'utilisateur " + agentId + " ne gère aucune tontine");
+        }
+
+        List<MembreOrganisation> membres = membreOrganisationRepository.findByUtilisateur(agent);
+        String organisationNom = membres.isEmpty() ? null : membres.get(0).getOrganisation().getNom();
+
+        // Toutes les transactions cash sur les tontines de l'agent (périmètre déjà restreint par la requête).
+        List<Transaction> transactionsCash = transactionRepository
+                .findByModePaiementAndCotisation_Tour_Tontine_AgentGestionnaire(ModePaiement.CASH, agent);
+
+        List<Transaction> enAttente = transactionsCash.stream()
+                .filter(t -> "INITIEE".equals(t.getStatut()))
+                .sorted((a, b) -> {
+                    LocalDateTime da = a.getDateInitiation();
+                    LocalDateTime db = b.getDateInitiation();
+                    if (da == null) return db == null ? 0 : 1;
+                    if (db == null) return -1;
+                    return da.compareTo(db);
+                })
+                .toList();
+
+        List<Transaction> confirmees = transactionsCash.stream()
+                .filter(t -> "REUSSIE".equals(t.getStatut()))
+                .toList();
+
+        List<Transaction> rejetees = transactionsCash.stream()
+                .filter(t -> "ECHOUEE".equals(t.getStatut()))
+                .toList();
+
+        BigDecimal montantEnAttente = sommeMontants(enAttente);
+        BigDecimal montantConfirme = sommeMontants(confirmees);
+        BigDecimal montantRejete = sommeMontants(rejetees);
+
+        StatsCashAgent statsCash = StatsCashAgent.builder()
+                .nombreTontinesGerees(tontinesGerees.size())
+                .nombreDeclarationsEnAttente(enAttente.size())
+                .montantEnAttente(montantEnAttente)
+                .nombreConfirmees(confirmees.size())
+                .montantConfirme(montantConfirme)
+                .nombreRejetees(rejetees.size())
+                .montantRejete(montantRejete)
+                .build();
+
+        List<TransactionResponse> declarationsEnAttente = enAttente.stream()
+                .map(this::toTransactionResponse)
+                .toList();
+
+        List<Alerte> alertesCash = new ArrayList<>();
+
+        // Alerte : déclarations cash en attente depuis longtemps.
+        LocalDateTime seuilAnciennete = LocalDateTime.now().minusHours(HEURES_DECLARATION_ANCIENNE);
+        long anciennes = enAttente.stream()
+                .filter(t -> t.getDateInitiation() != null && t.getDateInitiation().isBefore(seuilAnciennete))
+                .count();
+        if (anciennes > 0) {
+            alertesCash.add(Alerte.builder()
+                    .type("CASH_ANCIENNE")
+                    .message(anciennes + " declaration(s) cash en attente depuis plus de "
+                            + HEURES_DECLARATION_ANCIENNE + "h")
+                    .severite("WARN")
+                    .date(LocalDate.now())
+                    .build());
+        }
+
+        // Alerte : montant cash en attente de confirmation.
+        if (!enAttente.isEmpty()) {
+            alertesCash.add(Alerte.builder()
+                    .type("CASH_EN_ATTENTE")
+                    .message(enAttente.size() + " declaration(s) cash a confirmer")
+                    .severite("INFO")
+                    .date(LocalDate.now())
+                    .montant(montantEnAttente)
+                    .build());
+        }
+
+        return CashDashboardResponse.builder()
+                .utilisateurNom(agent.getNom())
+                .organisationNom(organisationNom)
+                .statsCash(statsCash)
+                .declarationsEnAttente(declarationsEnAttente)
+                .alertesCash(alertesCash)
+                .build();
+    }
+
+    private BigDecimal sommeMontants(List<Transaction> transactions) {
+        return transactions.stream()
+                .map(Transaction::getMontant)
+                .filter(m -> m != null)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    private TransactionResponse toTransactionResponse(Transaction t) {
+        return TransactionResponse.builder()
+                .idTransaction(t.getIdTransaction())
+                .referenceOperateur(t.getReferenceOperateur())
+                .operateur(t.getOperateur())
+                .modePaiement(t.getModePaiement())
+                .montant(t.getMontant())
+                .devise(t.getDevise() != null ? t.getDevise().getCode() : null)
+                .statut(t.getStatut())
+                .messageOperateur(t.getMessageOperateur())
+                .dateInitiation(t.getDateInitiation())
+                .dateConfirmation(t.getDateConfirmation())
                 .build();
     }
 }

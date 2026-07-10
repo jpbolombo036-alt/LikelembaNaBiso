@@ -24,6 +24,9 @@ public interface TourRepository extends JpaRepository<Tour, UUID> {
     /** Retourne les tours d'une tontine par statut (ex: PLANIFIE, EN_COURS). */
     List<Tour> findByTontineAndStatut(Tontine tontine, String statut);
 
+    /** Retourne tous les tours par statut, toutes tontines confondues (ex: PLANIFIE, EN_COURS). */
+    List<Tour> findByStatut(String statut);
+
     /** Retourne le tour actuel en cours d'une tontine (statut EN_COURS). */
     Optional<Tour> findByTontineAndStatut_First(Tontine tontine, String statut);
 
