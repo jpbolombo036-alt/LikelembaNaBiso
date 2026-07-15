@@ -26,13 +26,13 @@ public class JwtService {
 
     // Clé secrète de signature (codée en Base64). Doit faire au moins 256 bits.
     // Par défaut, nous utilisons une clé prédéfinie pour le développement.
-    @Value("${application.security.jwt.secret-key:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}")
+    @Value("${app.jwt.secret:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}")
     private String secretKey;
 
-    @Value("${application.security.jwt.expiration:86400000}") // 24 heures par défaut
+    @Value("${app.jwt.expiration:86400000}") // 24 heures par défaut
     private long jwtExpiration;
 
-    @Value("${application.security.jwt.refresh-expiration:604800000}") // 7 jours par défaut
+    @Value("${app.jwt.refresh-expiration:604800000}") // 7 jours par défaut
     private long refreshExpiration;
 
     /**
